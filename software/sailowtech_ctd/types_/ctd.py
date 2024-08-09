@@ -1,5 +1,6 @@
 import csv
 import datetime
+import io
 import time
 
 import smbus2 as smbus
@@ -31,6 +32,11 @@ class CTD:
 
     DEFAULT_THRESHOLD = 500  # By default, : 500mba (~5m of water)
 
+    # the timeout needed to query readings and calibrations
+    LONG_TIMEOUT = 1.5
+    # timeout for regular commands
+    SHORT_TIMEOUT = .3
+
     def __init__(self, bus=DEFAULT_BUS):
         self.name: str = ''
         self._sensors: list[GenericSensor] = []
@@ -46,12 +52,14 @@ class CTD:
         self._max_pressure: float = 0.  # To stop program when lifting the CTD up
         self._pressure_threshold: int = self.DEFAULT_THRESHOLD
 
-        try:
-            self._bus = smbus.SMBus(bus)
-        except:
-            print("Bus %d is not available." % bus)
-            print("Available busses are listed as /dev/i2c*")
-            self._bus = None
+        self.bus = 1
+
+        self.file_read = io.open(file="/dev/i2c-{}".format(self.bus),
+                                 mode="rb",
+                                 buffering=0)
+        self.file_write = io.open(file="/dev/i2c-{}".format(self.bus),
+                                  mode="wb",
+                                  buffering=0)
 
     @property
     def sensors(self):
@@ -89,62 +97,61 @@ class CTD:
         self._min_delay = sum([sensor.min_delay for sensor in self.sensors])
 
         for sensor in self.sensors:
-            sensor.init(self._bus)
+            sensor.init(self.file_read, self.file_write)
 
         # self._calibrate_atlas_sensors()
         # self._calibrate_bluerobotics_sensors()
 
         self._activated = True
 
-    # def measure(self, sensor: GenericSensor):
-    #     """
-    #
-    #     :param sensor:
-    #     :return: None if error / not supported, float value instead
-    #     """
-    #
-    #     if time.time() - sensor.last_read < sensor.min_delay:
-    #         print(f"Sensor '{sensor.name}' needs to wait longer between measurements !")
-    #         raise TooShortInterval()
-    #
-    #     measurement: float = None
-    #     if sensor.brand == SensorBrand.BlueRobotics:
-    #         # Do something
-    #         pass
-    #     elif sensor.brand == SensorBrand.Atlas:
-    #         # Do something
-    #         pass
-    #     else:
-    #         print(f"Sensor brand '{sensor.brand}' not supported yet !")
-    #
-    #     return measurement
+    # ############################# ATLAS ########################################
+    def get_devices(self):
+        device = AtlasSensor(SensorType.CONDUCTIVITY, "rien", None)
+        device_address_list = device.list_i2c_devices(self.file_read, self.file_write)
+        device_list = []
+
+        for i in device_address_list:
+            device.set_i2c_address(i, self.file_read, self.file_write)
+            response = device.query("I", self.file_read, self.file_write)
+            try:
+                moduletype = response.split(",")[1]
+                response = device.query("name,?", self.file_read, self.file_write).split(",")[1]
+            except IndexError:
+                print(">> WARNING: device at I2C address " + str(
+                    i) + " has not been identified as an EZO device, and will not be queried")
+                continue
+            device_list.append(
+                AtlasSensor(address=i, moduletype=moduletype, name=response, sensor_type=SensorType.CONDUCTIVITY))
+        return device_list
+
+    # ############################# FIN ATLAS ########################################
 
     def measure_all(self):
         if time.time() - self._last_measurement < self.MEASUREMENTS_INTERVAL:
             print("Wait longer !")
             raise TooShortInterval()
 
-        depth_sensor_output = self.DEFAULT_SENSORS[0].measure_value(self._bus)
+        # depth_sensor_output = self.DEFAULT_SENSORS[0].measure_value(self.file_read, self.file_write)
 
         for i in range(3):  # Test Read Atlas
-            print(self.DEFAULT_SENSORS[i + 1].measure_value(self._bus))
+            print(self.DEFAULT_SENSORS[i + 1].measure_value(self.file_read, self.file_write))
 
         # Check for end of measurements (we stop when we go up enough)
-        if self._max_pressure - depth_sensor_output[DataFields.PRESSURE_MBA] >= self._pressure_threshold:
-            self._activated = False
-            print("Stopped because went up")
-        else:
-            self._max_pressure = max(self._max_pressure, depth_sensor_output[DataFields.PRESSURE_MBA])
+        # if self._max_pressure - depth_sensor_output[DataFields.PRESSURE_MBA] >= self._pressure_threshold:
+        #     self._activated = False
+        #     print("Stopped because went up")
+        # else:
+        #     self._max_pressure = max(self._max_pressure, depth_sensor_output[DataFields.PRESSURE_MBA])
 
         now = datetime.datetime.now()
 
         time_values = {DataFields.TIMESTAMP: now.timestamp(),
                        DataFields.DATE: now.strftime("%Y-%m-%d %H:%M:%S")}
 
-        self._data.append(time_values | depth_sensor_output)
-        print(f'Depth value: {depth_sensor_output[DataFields.DEPTH_METERS]}\n'
-              f'Pressure (mba) : {depth_sensor_output[DataFields.PRESSURE_MBA]}\n'
-              f'Temperature (C) : {depth_sensor_output[DataFields.TEMPERATURE]}\n')
+        # self._data.append(time_values | depth_sensor_output)
+        # print(f'Depth value: {depth_sensor_output[DataFields.DEPTH_METERS]}\n'
+        #       f'Pressure (mba) : {depth_sensor_output[DataFields.PRESSURE_MBA]}\n'
+        #       f'Temperature (C) : {depth_sensor_output[DataFields.TEMPERATURE]}\n')
 
     def export_csv(self, path: str):
         fields = [DataFields.TIMESTAMP, DataFields.DATE,
