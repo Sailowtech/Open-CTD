@@ -18,7 +18,7 @@ class TooShortInterval(Exception):
 class CTD:
     # I'm sorry for this. Hardcoding all the sensors.
     DEFAULT_SENSORS: list[GenericSensor] = [
-        DepthSensor("Depth Sensor", 0x76, min_delay=0.3),
+        # DepthSensor("Depth Sensor", 0x76, min_delay=0.3),
         AtlasSensor(SensorType.DISSOLVED_OXY, "Dissolved Oxygen", 0x61),
         AtlasSensor(SensorType.CONDUCTIVITY, "Conductivity Probe", 0x64),
         AtlasSensor(SensorType.DISSOLVED_OXY_TEMP, "Temperature from Dissolved Oxygen Sensor", 0x66),
