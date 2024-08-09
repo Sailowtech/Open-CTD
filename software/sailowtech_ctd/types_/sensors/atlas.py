@@ -97,11 +97,11 @@ class AtlasSensor(GenericSensor):
         and read the response
         """
         self._write(bus, command)
-        # current_timeout = self._get_command_timeout(command=command)
-        # if not current_timeout:
-        #     return "sleep mode"
-        # else:
-        #     time.sleep(current_timeout)
+        current_timeout = self._get_command_timeout(command=command)
+        if not current_timeout:
+            return "sleep mode"
+        else:
+            time.sleep(current_timeout)
         return self._read(bus=bus)
 
     # def list_i2c_devices(self):  # Useless ?
