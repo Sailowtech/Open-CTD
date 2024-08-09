@@ -66,7 +66,7 @@ class AtlasSensor(GenericSensor):
         '''
         bus.write_byte(self.addr, ord(self.Commands.READ))
         response = bus.read_i2c_block_data(self.addr, self.DEFAULT_REG, num_of_bytes)
-        # print(response)
+        print(response)
         is_valid, error_code = self.response_valid(response=response)
 
         if is_valid:
@@ -79,8 +79,8 @@ class AtlasSensor(GenericSensor):
         return result
 
     def _write(self, bus: smbus.SMBus, cmd: Commands):
-
-        bus.write_i2c_block_data(i2c_addr=self.addr, register=self.DEFAULT_REG, data=[ord(c) for c in cmd])
+        bus.write_byte(self.addr, ord(self.Commands.READ))
+        # bus.write_i2c_block_data(i2c_addr=self.addr, register=self.DEFAULT_REG, data=[ord(c) for c in cmd])
 
     def _get_command_timeout(self, command):
         timeout = None
