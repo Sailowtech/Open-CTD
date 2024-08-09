@@ -26,7 +26,7 @@ if __name__ == '__main__':
     ctd.pressure_threshold = int(input("Threshold de coupure des mesures (mba)(généralement 200 à 500 mbars) : "))
 
     i = 0
-    while i < 30 and ctd.activated:
+    while i < 30:  # and ctd.activated:
         ctd.measure_all()
         time.sleep(1)
         i += 1
