@@ -17,6 +17,7 @@ from types_.ctd import CTD
 if __name__ == '__main__':
     ctd = CTD()
     # ctd.setup_sensors()
+    print(ctd.get_devices())
 
     pprint(ctd.sensors)
 
