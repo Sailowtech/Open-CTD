@@ -106,7 +106,7 @@ class CTD:
 
     # ############################# ATLAS ########################################
     def get_devices(self):
-        device = AtlasSensor(SensorType.CONDUCTIVITY, "rien", None)
+        device = AtlasSensor(SensorType.CONDUCTIVITY, "rien", 98)
         device_address_list = device.list_i2c_devices(self.file_read, self.file_write)
         device_list = []
 
